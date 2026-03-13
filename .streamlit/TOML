@@ -1,0 +1,6 @@
+[theme]
+primaryColor = "#d4af37" # Gold accent for luxury feel
+backgroundColor = "#0B0F19" # Very deep, rich blue-black
+secondaryBackgroundColor = "#141C2F" # Slightly lighter
+textColor = "#E2E8F0" # Crisp off-white
+font = "sans serif"
