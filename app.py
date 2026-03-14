@@ -255,7 +255,7 @@ if uploaded_file is not None:
                                 )
             
             st.subheader("Conversion Summary")
-            st.dataframe(table)
+            st.dataframe(table, use_container_width=False)
             st.write("**Note:** Any missing values in the group or outcome columns will be ignored in the analysis.")
             st.markdown("---")
 
