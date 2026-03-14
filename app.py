@@ -344,7 +344,7 @@ if uploaded_file is not None:
             st.markdown("##")
             with st.expander("Statistical Hypothesis Testing", expanded=False):
                 st.markdown("""
-                        Using a statistical hypothesis test, >5% significance level.
+                        Using a statistical hypothesis test at 5% significance level.
 
                         The hypotheses are formulated as follows:
                         
