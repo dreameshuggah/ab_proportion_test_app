@@ -206,8 +206,8 @@ if uploaded_file is not None:
     with sum_col:
         st.subheader("Data Summary")
         st.dataframe(df.describe(include='all').T, use_container_width=True)
-        st.write("**Note:** Any missing values in the group or outcome columns will be ignored in the analysis.")
-    st.markdown("---")
+        #st.write("**Note:** Any missing values in the group or outcome columns will be ignored in the analysis.")
+    #st.markdown("---")
 
 
     # group col
@@ -235,8 +235,7 @@ if uploaded_file is not None:
     
     
         if perform_ab_test:
-            st.markdown("""### Perform AB Testing:""")
-            
+            st.markdown("---")
 
             # 1. Statistics
             test_data = df_clean[df_clean[group_col] == test][outcome_col]
@@ -246,6 +245,25 @@ if uploaded_file is not None:
             n2, s2 = len(control_data), len(control_data[control_data == success_val])
             r1, r2 = s1/n1, s2/n2
             
+            table = pd.DataFrame(
+                                {
+                                    "Converted": [s1, s2],
+                                    "Total": [n1, n2],
+                                    "% Converted": [f"{r1*100:.2f}%", f"{r2*100:.2f}%"],
+                                },
+                                index=pd.Index([test, control]),
+                                )
+            
+            st.subheader("Conversion Summary")
+            st.dataframe(table)
+            st.write("**Note:** Any missing values in the group or outcome columns will be ignored in the analysis.")
+            st.markdown("---")
+
+
+
+
+
+            st.markdown("""### Perform AB Testing:""")
             
             # 2. Adaptive Testing Logic
             use_non_parametric = any(val < 5 for val in [s1, n1-s1, s2, n2-s2])
@@ -281,6 +299,7 @@ if uploaded_file is not None:
             except:
                 curr_power = 0.0
                 
+                
             # --- DISPLAY ---
             st.subheader(f"Analysis Method: {method}")
             
@@ -294,6 +313,8 @@ if uploaded_file is not None:
             col3.metric("Observed Lift", f"{lift:.2%}", delta=f"{lift_delta:.2%}")
             col4.metric("Statistical MDE", f"{rel_mde:.2%}", help="This is the smallest relative lift this test was capable of detecting with 80% power.")
 
+            
+            
             st.markdown("---")
             
             res_left, res_right = st.columns(2)
@@ -320,7 +341,20 @@ if uploaded_file is not None:
                 elif p_val < 0.05:
                     st.info("The test had enough power to detect this change.")
                 
-                
+            st.markdown("##")
+            with st.expander("Statistical Hypothesis Testing", expanded=False):
+                st.markdown("""
+                        Using a statistical hypothesis test, >5% significance level.
+
+                        The hypotheses are formulated as follows:
+                        
+                        -Null Hypothesis (H₀): The conversion rate in the Test group is equal to the Control group (p_Test - p_Control = 0).
+
+                        -Alternative Hypothesis (H₁): The conversion rate in the Test group is higher than in the Control group (p_Test - p_Control > 0).
+                        """
+                        )
+            
+
             # --- MDE Planner Visualization ---
             st.markdown("---")
             st.subheader("Sample Size Planning Tool")
@@ -379,3 +413,4 @@ if uploaded_file is not None:
         st.error("Group column must have exactly 2 unique values.")
 else:
     st.info("👈 Upload your data to see the Analysis and MDE Planner.")
+
