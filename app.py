@@ -1,11 +1,3 @@
-# streamlit run streamlit_ab_test_proportion.py 
-import streamlit as st
-import streamlit.components.v1 as components
-
-import pandas as pd
-import numpy as np
-
-
 # A/B testing
 import streamlit as st
 import pandas as pd
