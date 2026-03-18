@@ -302,7 +302,7 @@ if uploaded_file is not None:
             lift = (r1-r2)/r2
             lift_delta = lift - rel_mde
             
-            col3.metric("Observed Lift", f"{lift:.2%}", delta=f"{lift_delta:.2%}")
+            col3.metric("Relative Lift", f"{lift:.2%}", delta=f"{lift_delta:.2%}",help="Variant performed X% better than Control")
             col4.metric("Statistical MDE", f"{rel_mde:.2%}", help="This is the smallest relative lift this test was capable of detecting with 80% power.")
 
             
