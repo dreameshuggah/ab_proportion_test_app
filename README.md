@@ -14,9 +14,9 @@ This app simplifies the process of analyzing A/B tests where the primary metric 
 
 ## ✨ Features
 
-- **Instant Statistical Analysis:** Performs a Two-Proportion Z-Test on the fly.
+- **Instant Statistical Analysis:** Performs a Two-Proportion Parametric (Z-test) or Non-Parametric (Fisher's Exact) methods based on sample sizes.
 - **Conversion Comparison:** View the uplift (or drop) between your Control and Variant groups.
-- **Significance Indicators:** Clear "Statistically Significant" vs. "Not Significant" verdicts based on a customizable Alpha ($\alpha$).
+- **Significance Indicators:** Clear "Statistically Significant" vs. "Not Significant" verdicts based on a %5 Alpha ($\alpha$).
 - **Confidence Intervals:** Calculates the range of likely values for the true difference between groups.
 - **Visualizations:** Dynamic charts showing the probability distributions of both groups.
 - **Sample Size Insights:** Understand if your current data is sufficient to draw a conclusive result.
@@ -27,18 +27,9 @@ This app simplifies the process of analyzing A/B tests where the primary metric 
     * **Sample Size ($n$):** Total number of users/visitors for Group A and Group B.
     * **Conversions ($x$):** Number of successful actions (clicks, signups, etc.) for each group.
 2.  **Set Significance Level:** Choose your threshold (typically 0.05 for 95% confidence).
-3.  **Select Hypothesis:** Choose between a One-sided or Two-sided test.
+3.  **Select Hypothesis:** Choose between a One-sided test.
 4.  **Review Results:** The app will output:
     * Conversion rates for both groups.
     * The **Z-Statistic** and **P-Value**.
     * The **Relative Lift** (e.g., "Variant performed 12% better than Control").
-    * A final recommendation on whether to "Roll out" or "Keep testing."
-
-## 📦 Installation (Local Development)
-
-If you want to run this app locally or contribute to the code:
-
-1. **Clone the repository:**
-   ```bash
-   git clone [https://github.com/your-username/ab-proportion-test.git](https://github.com/your-username/ab-proportion-test.git)
-   cd ab-proportion-test
+    
