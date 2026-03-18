@@ -328,7 +328,7 @@ if uploaded_file is not None:
                 st.progress(min(float(curr_power), 1.0))
                 
                 if abs(lift) < rel_mde and p_val >= 0.05:
-                    st.warning(f"Your observed lift ({lift:.2%}) was smaller than your test's MDE ({rel_mde:.2%}). "
+                    st.warning(f"Your relative lift ({lift:.2%}) was smaller than your test's MDE ({rel_mde:.2%}). "
                                "This test was 'underpowered' to detect an effect this small.")
                 elif p_val < 0.05:
                     st.info("The test had enough power to detect this change.")
