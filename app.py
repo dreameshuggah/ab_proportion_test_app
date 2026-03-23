@@ -203,7 +203,7 @@ if uploaded_file is not None:
 
 
     # group col
-    group_col = st.sidebar.selectbox('Group Column',list(df.columns))
+    group_col = st.sidebar.selectbox('Group Column',list(df.columns),index=1)
     df_clean = df.dropna(subset=[group_col])
  
      # Treatment: AB col only 2 values!
