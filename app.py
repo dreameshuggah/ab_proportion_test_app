@@ -216,9 +216,9 @@ if uploaded_file is not None:
         control = st.sidebar.selectbox('Control Group',[i for i in df_clean[group_col].unique() if test not in i ])
                                                                                 
         # conversion col
-        outcome_col = st.sidebar.selectbox('Conversion Column',list(df_clean.columns))
+        outcome_col = st.sidebar.selectbox('Conversion Column',list(df_clean.columns),index=2)
         # success col (true or false, 1 or 0)
-        success_val = st.sidebar.selectbox("Success Value", df_clean[outcome_col].unique())
+        success_val = st.sidebar.selectbox("Success Value", df_clean[outcome_col].unique(),index=1)
     
         df_clean = df_clean.dropna(subset=[outcome_col])
 
