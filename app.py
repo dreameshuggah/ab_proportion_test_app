@@ -27,12 +27,12 @@ def classify_h(h):
     elif val < 0.8: return "Medium"
     else: return "Large"
 
-def calculate_mde(n, baseline_rate, alpha=0.05, power=0.8):
+def calculate_mde(n, baseline_rate, alpha=0.05, power=0.8, alternative='two-sided'):
     """Calculates the Minimum Detectable Effect (relative) for a given N and baseline."""
     analysis = NormalIndPower()
     # Solve for effect size (Cohen's h)
     try:
-        h_mde = analysis.solve_power(effect_size=None, nobs1=n, alpha=alpha, power=power, ratio=1.0)
+        h_mde = analysis.solve_power(effect_size=None, nobs1=n, alpha=alpha, power=power, ratio=1.0, alternative=alternative)
         # Convert Cohen's h back to a proportion p2
         # h = 2 * (asin(sqrt(p2)) - asin(sqrt(p1))) -> p2 = sin(h/2 + asin(sqrt(p1)))^2
         p2 = np.sin(h_mde/2 + np.arcsin(np.sqrt(baseline_rate)))**2
@@ -221,6 +221,9 @@ if uploaded_file is not None:
         success_val = st.sidebar.selectbox("Success Value", df_clean[outcome_col].unique(),index=1)
     
         df_clean = df_clean.dropna(subset=[outcome_col])
+        
+        hypothesis_type = st.sidebar.selectbox("Hypothesis Type", ["1-sided", "2-sided"], index=0)
+        alpha = st.sidebar.selectbox("Significance Level (\u03b1)", [0.01, 0.05, 0.10], index=1)
 
         perform_ab_test = st.sidebar.button("Perform A/B Testing")
     
@@ -259,34 +262,39 @@ if uploaded_file is not None:
             
             # 2. Adaptive Testing Logic
             use_non_parametric = any(val < 5 for val in [s1, n1-s1, s2, n2-s2])
+            
+            alternative_z = 'larger' if hypothesis_type == '1-sided' else 'two-sided'
+            alternative_f = 'greater' if hypothesis_type == '1-sided' else 'two-sided'
+            
             if use_non_parametric:
-                _, p_val = stats.fisher_exact([[s1, n1-s1], [s2, n2-s2]])
+                _, p_val = stats.fisher_exact([[s1, n1-s1], [s2, n2-s2]], alternative=alternative_f)
                 method = "Fisher's Exact (Non-Parametric)"
             else:
-                _, p_val = proportions_ztest([s1, s2], [n1, n2])
+                _, p_val = proportions_ztest([s1, s2], [n1, n2], alternative=alternative_z)
                 method = "Z-test (Parametric)"
 
             # 3. CIs and Effect Size
-            ci1_low, ci1_high = proportion_confint(s1, n1, alpha=0.05, method='wilson')
-            ci2_low, ci2_high = proportion_confint(s2, n2, alpha=0.05, method='wilson')
+            ci1_low, ci1_high = proportion_confint(s1, n1, alpha=alpha, method='wilson')
+            ci2_low, ci2_high = proportion_confint(s2, n2, alpha=alpha, method='wilson')
             
             ci_diff_low, ci_diff_high = confint_proportions_2indep( s1  # successes in Test group
                                                                   , n1 # total in Test group
                                                                   , s2 # successes in Control group
                                                                   , n2 # total in Control group
+                                                                  , alpha=alpha
                                                                   , method='newcombe')
             h_stat = calculate_cohens_h(r1, r2)
             
             # 4. MDE & Power Calculation
-            abs_mde, rel_mde = calculate_mde(n1, r1)
+            abs_mde, rel_mde = calculate_mde(n1, r1, alpha=alpha, alternative=alternative_z)
             
             analysis = NormalIndPower()
             try:
                 curr_power = analysis.solve_power(effect_size=abs(h_stat) if abs(h_stat) > 0.001 else 0.001, 
                                                   nobs1=n1
                                                   ,ratio=n2/n1
-                                                  ,alpha=0.05
-                                                  ,alternative='larger'
+                                                  ,alpha=alpha
+                                                  ,alternative=alternative_z
                                                   )
             except:
                 curr_power = 0.0
@@ -295,9 +303,11 @@ if uploaded_file is not None:
             # --- DISPLAY ---
             st.subheader(f"Analysis Method: {method}")
             
+            conf_level_pct = int((1 - alpha) * 100)
+            
             col1, col2, col3, col4 = st.columns(4)
-            col1.metric(f"Rate: {test}", f"{r1:.2%}", help=f"95% CI: [{ci1_low:.2%}, {ci1_high:.2%}]")
-            col2.metric(f"Rate: {control}", f"{r2:.2%}", help=f"95% CI: [{ci2_low:.2%}, {ci2_high:.2%}]")
+            col1.metric(f"Rate: {test}", f"{r1:.2%}", help=f"{conf_level_pct}% CI: [{ci1_low:.2%}, {ci1_high:.2%}]")
+            col2.metric(f"Rate: {control}", f"{r2:.2%}", help=f"{conf_level_pct}% CI: [{ci2_low:.2%}, {ci2_high:.2%}]")
     
             lift = (r1-r2)/r2
             lift_delta = lift - rel_mde
@@ -312,13 +322,13 @@ if uploaded_file is not None:
             res_left, res_right = st.columns(2)
             with res_left:
                 st.subheader("Statistical Significance")
-                if p_val < 0.05:
+                if p_val < alpha:
                     st.success(f"**Significant!** (p = {p_val:.4f})")
                 else:
                     st.error(f"**Not Significant** (p = {p_val:.4f})")
                     st.write("The difference observed is likely due to random noise.")
                 
-                st.write(f"The 95% Confidence Interval for the difference is **[{ci_diff_low:.2%}, {ci_diff_high:.2%}]**.")
+                st.write(f"The {conf_level_pct}% Confidence Interval for the difference is **[{ci_diff_low:.2%}, {ci_diff_high:.2%}]**.")
                 st.caption("If the interval includes 0.00%, the result is typically not significant.")
 
             with res_right:
@@ -327,22 +337,25 @@ if uploaded_file is not None:
                 st.write(f"**Statistical Power:** {curr_power:.1%}")
                 st.progress(min(float(curr_power), 1.0))
                 
-                if abs(lift) < rel_mde and p_val >= 0.05:
+                if abs(lift) < rel_mde and p_val >= alpha:
                     st.warning(f"Your relative lift ({lift:.2%}) was smaller than your test's MDE ({rel_mde:.2%}). "
                                "This test was 'underpowered' to detect an effect this small.")
-                elif p_val < 0.05:
+                elif p_val < alpha:
                     st.info("The test had enough power to detect this change.")
                 
             st.markdown("##")
             with st.expander("Statistical Hypothesis Testing", expanded=False):
-                st.markdown("""
-                        Using a statistical hypothesis test at 5% significance level.
+                alt_text = "higher than" if hypothesis_type == "1-sided" else "not equal to"
+                op_text = ">" if hypothesis_type == "1-sided" else "≠"
+                
+                st.markdown(f"""
+                        Using a statistical hypothesis test at {alpha*100:.0f}% significance level.
 
                         The hypotheses are formulated as follows:
                         
                         -Null Hypothesis (H₀): The conversion rate in the Test group is equal to the Control group (p_Test - p_Control = 0).
 
-                        -Alternative Hypothesis (H₁): The conversion rate in the Test group is higher than in the Control group (p_Test - p_Control > 0).
+                        -Alternative Hypothesis (H₁): The conversion rate in the Test group is {alt_text} the Control group (p_Test - p_Control {op_text} 0).
                         """
                         )
             
@@ -352,6 +365,7 @@ if uploaded_file is not None:
             st.subheader("Sample Size Planning Tool")
             #st.write("How many samples would you need to detect *smaller* effects?")
             st.write("This chart shows how many samples you would need to detect a specific relative lift with 80% power.")
+            st.info(f"Based on the calculated MDE of **{rel_mde:.2%}**, the required sample size is **{int(n1)}** per group.")
             
             #mde_range = np.linspace(0.01, 0.5, 50) # 1% to 50% relative MDE
             mde_range = np.linspace(0.02, 0.40, 40) # 2% to 40%
@@ -362,7 +376,7 @@ if uploaded_file is not None:
                 target_p2 = r1 * (1 + m)
                 if target_p2 > 1: target_p2 = 0.99
                 target_h = calculate_cohens_h(target_p2, r1)
-                n = analysis.solve_power(effect_size=abs(target_h), alpha=0.05, power=0.8, ratio=1)
+                n = analysis.solve_power(effect_size=abs(target_h), alpha=alpha, power=0.8, ratio=1, alternative=alternative_z)
                 required_n.append(n)
             
             fig = go.Figure()
@@ -382,6 +396,22 @@ if uploaded_file is not None:
                 annotation_font=dict(color="#E2E8F0"),
                 annotation_position="top right"
             )
+            fig.add_hline(
+                y=n1,
+                line_dash="dot",
+                line_color="rgba(226, 232, 240, 0.5)",
+                annotation_text=f'Samples needed: {int(n1)}',
+                annotation_font=dict(color="rgba(226, 232, 240, 0.8)"),
+                annotation_position="bottom left"
+            )
+            fig.add_trace(go.Scatter(
+                x=[rel_mde * 100], 
+                y=[n1], 
+                mode='markers', 
+                showlegend=False,
+                marker=dict(color='#E2E8F0', size=12, symbol='star'),
+                hovertemplate='Current MDE: %{x:.2f}%<br>Samples: %{y:.0f}<extra></extra>'
+            ))
             fig.update_layout(
                 title="Sample Size vs. Sensitivity (Minimum Detectable Effect)",
                 title_font=dict(color="#d4af37", size=16),
@@ -405,4 +435,3 @@ if uploaded_file is not None:
         st.error("Group column must have exactly 2 unique values.")
 else:
     st.info("👈 Upload your data to see the Analysis and MDE Planner.")
-
